@@ -1,0 +1,26 @@
+{
+  "name": "dsh-wait-agent-input",
+  "version": "0.2.0",
+  "description": "Let user input end wait_agent and job_output waits without cancelling agents or background jobs",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "cordis.patch.yml"],
+  "license": "MIT",
+  "author": "Yanzuo Lu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YanzuoLu/dsh-wait-agent-input.git"
+  },
+  "homepage": "https://github.com/YanzuoLu/dsh-wait-agent-input#readme",
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.0-rc.2 <0.3.0-0"
+  }
+}

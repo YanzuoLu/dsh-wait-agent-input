@@ -1,0 +1,3 @@
+- insert:
+    - id: wait-agent-input
+      name: dsh-wait-agent-input
