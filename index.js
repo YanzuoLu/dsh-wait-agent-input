@@ -1,5 +1,6 @@
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools'
+import { installBashInputPromotion } from './bash.js'
 
 export const name = 'wait-agent-input'
 export const inject = ['tools']
@@ -73,6 +74,7 @@ export function apply(ctx) {
   const notices = new WeakMap()
   const jobWrappers = new Map()
   let closing = false
+  installBashInputPromotion(ctx, pendingInput, (exec, notice) => notices.set(exec, notice))
 
   ctx.on('tools/execute', async (exec, next) => {
     if (closing || exec.agent === undefined) return next()
@@ -130,7 +132,12 @@ export function apply(ctx) {
     if (notice === undefined || result.isError || decision.kind !== 'accept'
       || Object.hasOwn(decision, 'value') || Object.hasOwn(decision, 'content')) return decision
     let text = notice
-    if (exec.name === 'job_output') {
+    if (exec.name === 'bash') {
+      const { output, jobId } = result.value
+      const received = notice === QUEUED_NOTICE ? 'User message queued.' : 'User message received.'
+      const queued = notice === QUEUED_NOTICE ? ' Finish this turn to handle it.' : ''
+      text = `${output}${output.length > 0 && !output.endsWith('\n') ? '\n' : ''}${received} Command continues as background job ${jobId}.${queued}`
+    } else if (exec.name === 'job_output') {
       const body = result.content[0].text
       const status = body.lastIndexOf('\n')
       // Keep the native status at the tail when its finalizer enforces byte caps.
