@@ -20,7 +20,7 @@ function pendingInput(agent) {
 /** Invalid calls retain the original tool's validation and error result. */
 function waitingTool(ctx, exec) {
   if (exec.name !== 'wait_agent' && (exec.name !== 'job_output' || exec.arguments?.wait !== true)) return
-  const tool = ctx.tools.get(exec.name, exec.agent)
+  const tool = ctx.tools.get(exec.name, exec.agent, exec.toolSet)
   if (tool === undefined || validateJsonSchemaValue(tool.parameters, exec.arguments).length > 0) return
   if (exec.name === 'wait_agent') {
     const timeout = exec.arguments.timeout_ms ?? 30000
@@ -68,7 +68,10 @@ function wrapJobOutput(wrappers, tool, token, wait) {
   }
 }
 
-/** End only this tool's cooperative wait when human input is pending. */
+/**
+ * End only this tool's cooperative wait when queued human input is pending.
+ * The native waits already end on steering input at the next step.
+ */
 export function apply(ctx) {
   const active = new Set()
   const notices = new WeakMap()
@@ -86,11 +89,9 @@ export function apply(ctx) {
     const received = new HarnessError(`User input received during ${exec.name}.`, INPUT_RECEIVED)
     const done = Promise.withResolvers()
     const wait = { controller, received, done: done.promise }
-    let notice
     const interrupt = () => {
       if (upstream.aborted || controller.signal.aborted) return
-      notice = pendingInput(exec.agent)
-      if (notice !== undefined) controller.abort(received)
+      if (pendingInput(exec.agent) === QUEUED_NOTICE) controller.abort(received)
     }
     const unsubscribe = ctx.on('agent/inbox/inserted', ({ agent, message }) => {
       if (agent === exec.agent && isUser(message)) interrupt()
@@ -106,10 +107,10 @@ export function apply(ctx) {
       interrupt()
       const result = await next()
       if (!upstream.aborted && controller.signal.reason === received) {
-        if (jobOutput && !result.isError) notices.set(exec, notice)
+        if (jobOutput && !result.isError) notices.set(exec, QUEUED_NOTICE)
         const code = result.isError ? result.error.info?.code : undefined
         if (!jobOutput && [INPUT_RECEIVED, 'ABORTED', 'ABORTED_BEFORE_DISPATCH'].includes(code)) {
-          notices.set(exec, notice)
+          notices.set(exec, QUEUED_NOTICE)
           return { isError: false, value: { timedOut: false }, content: [] }
         }
       }

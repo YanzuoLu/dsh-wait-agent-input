@@ -116,7 +116,7 @@ export function installBashInputPromotion(ctx, pendingInput, recordNotice) {
     const jobs = originalService(exec.agent.ctx.get('jobs'))
     const shell = originalService(exec.agent.ctx.get('shell'))
     if (jobs === undefined || shell === undefined) return next()
-    const tool = ctx.tools.get(exec.name, exec.agent)
+    const tool = ctx.tools.get(exec.name, exec.agent, exec.toolSet)
     if (tool === undefined || tool.parameters.properties?.run_in_background === undefined) return next()
     const state = { agent: exec.agent, jobs, shell, active: true, ready: false, signal: exec.signal }
     state.check = () => {
